@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 
 
 
@@ -9,11 +9,16 @@ import tensorflow as tf
 
 
 class SvnGaussiKernel(object) :
-    def __init__(self,MAX_SEQUENCE,ALL_X,ALL_Y,BATCH_SIZE=4,NUMBER_OF_CATEGORIES=7):
+    def __init__(self,MAX_SEQUENCE,ALL_X,ALL_Y,BATCH_SIZE,NUMBER_OF_CATEGORIES):
         self.x_data = tf.placeholder(shape=[None, MAX_SEQUENCE], dtype=tf.float32)
         self.y_target = tf.placeholder(shape=[NUMBER_OF_CATEGORIES, None], dtype=tf.float32)
         self.prediction_grid = tf.placeholder(shape=[None, MAX_SEQUENCE], dtype=tf.float32)
-
+        self.all_x = ALL_X
+        self.xx = tf.constant(ALL_X,dtype=tf.float32)
+        self.yy = tf.constant(ALL_Y,dtype=tf.float32)
+        self.all_y = ALL_Y
+        self.batch_size = BATCH_SIZE
+        self.number_of_categories = NUMBER_OF_CATEGORIES
         # Create variables for svm
         b = tf.Variable(tf.random_normal(shape=[NUMBER_OF_CATEGORIES, BATCH_SIZE]))
 
@@ -51,3 +56,44 @@ class SvnGaussiKernel(object) :
             # Declare optimizer
             my_opt = tf.train.GradientDescentOptimizer(0.098)
             self.train_step = my_opt.minimize(self.loss)
+
+            rA_p = tf.reshape(tf.reduce_sum(tf.square(self.xx), 1), [-1, 1])
+            rB_p = tf.reshape(tf.reduce_sum(tf.square(self.prediction_grid), 1), [-1, 1])
+            pred_sq_dist_p = tf.add(tf.subtract(rA_p, tf.multiply(2., tf.matmul(self.xx, tf.transpose(self.prediction_grid)))), tf.transpose(rB_p))
+            pred_kernel_p = tf.exp(tf.multiply(gamma, tf.abs(pred_sq_dist_p)))
+
+            prediction_output_p = tf.matmul(tf.multiply(self.yy, b), pred_kernel_p)
+            self.prediction_p = tf.argmax(prediction_output_p - tf.expand_dims(tf.reduce_mean(prediction_output_p, 1), 1), 0)
+
+
+
+    def train(self, sess,epoch):
+        loss_vec = []
+        batch_accuracy = []
+        features = self.all_x
+        labels = self.all_y
+        model = self
+        for i in range(epoch):
+            rand_index = np.random.choice(len(features), size=self.batch_size)
+            rand_x = features[rand_index]
+            rand_y = labels[:, rand_index]
+            sess.run(model.train_step, feed_dict={model.x_data: rand_x, model.y_target: rand_y})
+
+            temp_loss = sess.run(model.loss, feed_dict={model.x_data: rand_x, model.y_target: rand_y})
+            loss_vec.append(temp_loss)
+
+            acc_temp = sess.run(model.accuracy, feed_dict={model.x_data: rand_x,
+                                                     model.y_target: rand_y,
+                                                     model.prediction_grid:rand_x})
+            batch_accuracy.append(acc_temp)
+
+            if (i+1)%250==0:
+                print('Step #' + str(i+1))
+                print('Loss = ' + str(temp_loss))
+                print('accuracy',acc_temp)
+
+
+    def predict(self,sess, grid):
+        model = self
+        out = sess.run(model.prediction_p, feed_dict={ model.prediction_grid:grid})
+        return out

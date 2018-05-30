@@ -103,7 +103,14 @@ def transformer_features(features,MAX_SEQUENCE=30,est=False,dict1=None):
     else:
         total = len(dict1)
     # reformer les donner
-    features = [[dict1[x1] for x1 in x] for x in features]
+    alp = []
+    for x in features:
+        a = []
+        for x1 in x:
+            a.append(dict1.get(x1,0))
+        alp.append(a)
+    features = alp
+    #features = [[dict1[x1] for x1 in x] for x in features]
     new_feature = []
 
     for i in range(len(features)):
