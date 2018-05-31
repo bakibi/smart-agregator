@@ -6,8 +6,8 @@ import man_data
 
 
 MAX_SEQUENCE = 18
-EPOCH = 500
-BATCH_SIZE = 2000
+EPOCH = 2000
+BATCH_SIZE = 200
 NUMBER_OF_CLASSIFIER = 5
 
 def main():
